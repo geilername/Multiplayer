@@ -1,6 +1,7 @@
 ﻿using LiteNetLib;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -82,7 +83,7 @@ namespace Multiplayer.Common
             RegisterChatCmd("autosave", new ChatCmdAutosave());
             RegisterChatCmd("kick", new ChatCmdKick());
 
-            if (settings.bindAddress != null)
+            if (settings.bindAddress4 != null || settings.bindAddress6 != null)
                 netManager = new NetManager(new MpNetListener(this, false));
 
             if (settings.lanAddress != null)
@@ -93,7 +94,7 @@ namespace Multiplayer.Common
 
         public bool? StartListeningNet()
         {
-            return netManager?.Start(IPAddress.Parse(settings.bindAddress), IPAddress.IPv6Any, settings.bindPort);
+            return netManager?.Start(settings.bindAddress4, settings.bindAddress6, settings.bindPort);
         }
 
         public bool? StartListeningLan()
@@ -184,7 +185,7 @@ namespace Multiplayer.Common
 
             var curSpeed = Client.Multiplayer.WorldComp.TimeSpeed;
 
-            autosaveCountdown -= (curSpeed == Verse.TimeSpeed.Paused && !Client.MultiplayerMod.settings.pauseAutosaveCounter) 
+            autosaveCountdown -= (curSpeed == Verse.TimeSpeed.Paused && !Client.MultiplayerMod.settings.pauseAutosaveCounter)
                 ? 1 : Client.Multiplayer.WorldComp.TickRateMultiplier(curSpeed);
 
             if (autosaveCountdown <= 0)
@@ -424,7 +425,8 @@ namespace Multiplayer.Common
     public class ServerSettings : IExposable
     {
         public string gameName;
-        public string bindAddress;
+        public IPAddress bindAddress4;
+        public IPAddress bindAddress6;
         public int bindPort;
         public string lanAddress;
 

@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -40,10 +41,43 @@ namespace Multiplayer.Client
                     AddOrUpdate(endpoint);
             };
 
-            net = new NetManager(listener);
-            net.DiscoveryEnabled = true;
-            net.ReuseAddress = true;
-            net.Start(5100);
+            byte ipSupport = 0;
+
+            IPAddress[] allIPs = Dns.GetHostAddresses(Dns.GetHostName());
+            foreach (IPAddress ip in allIPs)
+            {
+                switch (ip.AddressFamily)
+                {
+                    case AddressFamily.InterNetworkV6:
+                        ipSupport &= 1;
+                        break;
+                    case AddressFamily.InterNetwork:
+                        ipSupport &= 2;
+                        break;
+                }
+            }
+
+            net = new NetManager(listener)
+            {
+                DiscoveryEnabled = true,
+                ReuseAddress = true
+            };
+
+            if ((ipSupport | 3) == 3)
+            {
+                Log.Message($"Starting with DualStack");
+                net.Start(5100);
+            }
+            else if ((ipSupport | 1) == 1 && (ipSupport | 2) == 0)
+            {
+                Log.Message($"Starting with IPv4 only");
+                net.Start(IPAddress.Any, IPAddress.IPv6None, 5100);
+            }
+            else if ((ipSupport | 1) == 0 && (ipSupport | 2) == 2)
+            {
+                Log.Message($"Starting with IPv6 only");
+                net.Start(IPAddress.None, IPAddress.IPv6Any, 5100);
+            }
 
             doCloseX = true;
             closeOnAccept = false;
@@ -122,7 +156,7 @@ namespace Multiplayer.Client
             {
                 var displayName = Path.ChangeExtension(file.FullName.Substring(Multiplayer.ReplaysDir.Length + 1), null);
                 var saveFile = new SaveFile(displayName, true, file);
-                
+
                 try
                 {
                     var replay = Replay.ForLoading(file);
@@ -299,7 +333,7 @@ namespace Multiplayer.Client
 
             width += 120;
         }
-        
+
         private static void CheckGameVersionAndMods(SaveFile file, Action action)
         {
             ScribeMetaHeaderUtility.lastMode = ScribeMetaHeaderUtility.ScribeHeaderMode.Map;
@@ -359,7 +393,7 @@ namespace Multiplayer.Client
                 else
                 {
                     GUI.color = saveFile.VersionColor;
-                    Widgets.Label(infoText.Down(16), (saveFile.rwVersion ?? "???").Truncate(110));                        
+                    Widgets.Label(infoText.Down(16), (saveFile.rwVersion ?? "???").Truncate(110));
                 }
 
                 if (!saveFile.Valid)

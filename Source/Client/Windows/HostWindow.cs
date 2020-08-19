@@ -168,7 +168,7 @@ namespace Multiplayer.Client
 
         private void TryHost()
         {
-            if (settings.direct && !TryParseIp(settings.directAddress, out settings.bindAddress, out settings.bindPort))
+            if (settings.direct && !TryParseIp(settings.directAddress, out settings.bindAddress4, out settings.bindAddress6, out settings.bindPort))
                 return;
 
             if (settings.gameName.NullOrEmpty())
@@ -178,7 +178,10 @@ namespace Multiplayer.Client
             }
 
             if (!settings.direct)
-                settings.bindAddress = null;
+            {
+                settings.bindAddress4 = null;
+                settings.bindAddress6 = null;
+            }
 
             if (!settings.lan)
                 settings.lanAddress = null;
@@ -193,25 +196,53 @@ namespace Multiplayer.Client
             Close(true);
         }
 
-        private bool TryParseIp(string ip, out string addr, out int port)
+        private bool TryParseIp(string ip, out IPAddress addr4, out IPAddress addr6, out int port)
         {
             port = MultiplayerServer.DefaultPort;
-            addr = null;
+            addr4 = IPAddress.None;
+            addr6 = IPAddress.IPv6None;
 
             string[] parts = ip.Split(':');
+            string rawIp = "";
+            string rawPort = "";
 
-            if (!IPAddress.TryParse(parts[0], out IPAddress ipAddr))
+            for (int i = 0; i < parts.Length-1; i++)
             {
-                Messages.Message("MpInvalidAddress".Translate(), MessageTypeDefOf.RejectInput, false);
-                return false;
+                rawIp += parts[i];
             }
 
-            addr = parts[0];
+            rawPort = parts[parts.Length - 1];
 
-            if (parts.Length >= 2 && (!int.TryParse(parts[1], out port) || port < 0 || port > ushort.MaxValue))
+            if (parts.Length >= 2 && (!int.TryParse(rawPort, out port) || port < 0 || port > ushort.MaxValue))
             {
                 Messages.Message("MpInvalidPort".Translate(), MessageTypeDefOf.RejectInput, false);
                 return false;
+            }
+
+            if (rawIp == "any")
+            {
+                addr4 = IPAddress.Any;
+                addr6 = IPAddress.IPv6Any;
+
+            }
+            else
+            {
+
+                if (!IPAddress.TryParse(rawIp, out IPAddress ipAddr))
+                {
+                    Messages.Message("MpInvalidAddress".Translate(), MessageTypeDefOf.RejectInput, false);
+                    return false;
+                }
+
+                switch (ipAddr.AddressFamily)
+                {
+                    case AddressFamily.InterNetwork:
+                        addr4 = ipAddr;
+                        break;
+                    case AddressFamily.InterNetworkV6:
+                        addr6 = ipAddr;
+                        break;
+                }
             }
 
             return true;

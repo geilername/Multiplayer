@@ -130,7 +130,7 @@ namespace Multiplayer.Client
                 string text = "Server started.";
 
                 if (netStarted != null)
-                    text += (netStarted.Value ? $" Direct at {settings.bindAddress}:{localServer.NetPort}." : " Couldn't bind direct.");
+                    text += (netStarted.Value ? $" Direct at {settings.bindAddress4}:{localServer.NetPort} / {settings.bindAddress6}:{localServer.NetPort}." : " Couldn't bind direct.");
 
                 if (lanStarted != null)
                     text += (lanStarted.Value ? $" LAN at {settings.lanAddress}:{localServer.LanPort}." : " Couldn't bind LAN.");
